@@ -31,7 +31,8 @@ def get_teams_structure(new_teams, updated_teams):
                 if topic in new_teams[team]:
                     updated_teams[team][topic] = new_teams[team][topic]
     return updated_teams
-    
+
+
 def get_update_structure(name, teams):
     stucture = {}
     if name != '':
@@ -41,11 +42,11 @@ def get_update_structure(name, teams):
         stucture['teams'] = teams
     return stucture
 
+
 def register_match(tournament, local_team, visit_team):
     if list(db_connection.get_collection('Torneo').find({"_id": ObjectId(tournament)})) == []:
             abort(400, Constants.tournament_invalid)
     #load teams
-    print(local_team, visit_team)
     if list(db_connection.get_collection('Equipo').find({"_id": ObjectId(local_team[1])})) == []:
             abort(400, Constants.local_team_invalid)
     if list(db_connection.get_collection('Equipo').find({"_id": ObjectId(visit_team[1])})) == []:
@@ -54,9 +55,9 @@ def register_match(tournament, local_team, visit_team):
     #build dict
     info = {
             'local_team': local_team[1],
-            'local_goals': 0,
+            'local_goals': -1,
             'visit_team': visit_team[1],
-            'visit_goals': 0,
+            'visit_goals': -1,
             'local_team_position': local_team[0],
             'visit_team_position': visit_team[0] 
             }

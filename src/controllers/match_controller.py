@@ -40,25 +40,26 @@ def refresh_match(request, id):
             abort(404, Constants.no_match)
         else:
              #get new info
+            previous_result = [match[0]['match']['local_goals'], match[0]['match']['visit_goals']]
             updated_info = {}
             updated_info = match[0]['match']
             updated_info = get_match_structure(request_json, updated_info)
-
             db_connection.get_collection('Partido').find_one_and_replace({'_id': ObjectId(id)}, {'tournament':match[0]['tournament'],'match': updated_info})
             tournaments = list(db_connection.get_collection('Torneo').find({"_id": ObjectId(match[0]['tournament'])}))
             tournaments = json.loads(MongoJSONEncoder().encode(tournaments))
-            print(updated_info['local_team_position'])
+     
+
             tournament_info = {
                 'teams': {
                     updated_info['local_team_position']:{
-                        'goals_scored': updated_info['local_goals'] + tournaments[0]['teams'][updated_info['local_team_position']]['goals_scored'],
-                        'goals_recived': updated_info['visit_goals'] + tournaments[0]['teams'][updated_info['local_team_position']]['goals_recived'],
-                        'points': tournaments[0]['teams'][updated_info['local_team_position']]['points'] +  calcule_points(updated_info['local_goals'], updated_info['visit_goals'])
+                        'goals_scored': sum_results( updated_info['local_goals'], tournaments[0]['teams'][updated_info['local_team_position']]['goals_scored'], previous_result[0]),
+                        'goals_recived': sum_results(updated_info['visit_goals'], tournaments[0]['teams'][updated_info['local_team_position']]['goals_recived'], previous_result[1]),
+                        'points': sum_results(calcule_points(updated_info['local_goals'], updated_info['visit_goals']), tournaments[0]['teams'][updated_info['local_team_position']]['points'], calcule_points(previous_result[0], previous_result[1])  )
                     },
                     updated_info['visit_team_position']:{
-                        'goals_scored': updated_info['visit_goals'] + tournaments[0]['teams'][updated_info['visit_team_position']]['goals_scored'],
-                        'goals_recived': updated_info['local_goals'] + tournaments[0]['teams'][updated_info['visit_team_position']]['goals_recived'],
-                        'points': tournaments[0]['teams'][updated_info['visit_team_position']]['points'] +  calcule_points(updated_info['visit_goals'], updated_info['local_goals'])
+                        'goals_scored': sum_results(updated_info['visit_goals'], tournaments[0]['teams'][updated_info['visit_team_position']]['goals_scored'], previous_result[1]),
+                        'goals_recived': sum_results(updated_info['local_goals'], tournaments[0]['teams'][updated_info['visit_team_position']]['goals_recived'], previous_result[0]),
+                        'points':  sum_results(calcule_points(updated_info['visit_goals'], updated_info['local_goals']), tournaments[0]['teams'][updated_info['visit_team_position']]['points'], calcule_points(previous_result[1], previous_result[0]))
                     }
                 }
             }
@@ -101,3 +102,10 @@ def calcule_points(goals_scored, goals_recived):
         return 1
     else:
         return 0
+
+def sum_results(new_result, registered, old_result):
+    if registered != -1:
+        new_result += registered
+    if old_result != -1:
+        new_result -= old_result
+    return new_result

@@ -32,7 +32,7 @@ def add_tournament(request):
             teams[team] = {
                 'team': teams[team],
                 'goals_scored': 0,
-                'points': 0,
+                'points': -1,
                 'goals_recived': 0
             }
         tournament_added = db_connection.get_collection('Torneo').insert_one({'name': tournament, 'teams':teams})
@@ -89,3 +89,19 @@ def generate_matches(teams, id):
     for match in matches:
         register_match(id, [match[0],teams[match[0]]['team']], [match[1],teams[match[1]]['team']])
 
+def get_score(request):
+    tournament_id = request.args.get('tournament')
+    tournaments = list(db_connection.get_collection('Torneo').find({"_id": ObjectId(tournament_id)}))[0]
+    if tournaments == []:
+        abort(404, Constants.no_tournament)
+    else:
+        teams = []
+        for team in tournaments['teams']:
+            name =  json.loads(MongoJSONEncoder().encode(list(db_connection.get_collection('Equipo').find({"_id": ObjectId(tournaments['teams'][team]['team'])}))))[0]['name']
+            
+            teams.append(( name, tournaments['teams'][team]['goals_scored'], tournaments['teams'][team]['goals_recived'], tournaments['teams'][team]['points']))
+        teams.sort(key=by_points, reverse=True)
+        return {'status': 'true', 'data': teams }
+
+def by_points(elem):
+    return elem[3]

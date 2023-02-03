@@ -1,6 +1,6 @@
 from app import app
 from flask import request
-from src.controllers.tournament_controller import get_all_tournaments, get_tournament, add_tournament, refresh_tournament, remove_tournament
+from src.controllers.tournament_controller import get_all_tournaments, get_tournament, add_tournament, refresh_tournament, remove_tournament, get_score
 path = '/tournaments/'
 
 @app.route(path+'add', methods=['POST'])
@@ -23,3 +23,7 @@ def delete_tournament(id):
 @app.route(path+'get', methods=['GET'])
 def obtain_tournament():
     return get_tournament(request)
+
+@app.route(path+'getScores', methods=['GET'])
+def get_scoreboard():
+    return get_score(request)
