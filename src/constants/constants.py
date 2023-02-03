@@ -6,3 +6,8 @@ class Constants:
     tournament_exists = 'This tournament already exists'
     match_exists = 'This match already exists'
     system_fail = 'System failure'
+    team_invalid = 'Team is not valid'
+    local_team_invalid = 'Local team is not valid'
+    visit_team_invalid = 'Visit team is not valid'
+    tournament_invalid = 'Tournament is not valid'
+    match_invalid = 'Match is not valid'

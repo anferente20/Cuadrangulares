@@ -4,20 +4,18 @@ from src.helpers.json_encoder import MongoJSONEncoder
 import json
 from flask import abort
 from src.constants.constants import Constants
+import itertools
+from src.database.register import update_tournament, register_match, delete_match
 
 
 #Read tournaments
 def get_all_tournaments():
-    try:
-        tournaments =list(db_connection.get_collection('Torneo').find())
+    tournaments =list(db_connection.get_collection('Torneo').find())
+    if tournaments == [] :
+        abort(404,Constants.no_tournament)
+    else:
         json_tournaments = json.loads(MongoJSONEncoder().encode(tournaments))
-        if tournaments == [] :
-            abort(404,Constants.no_tournament)
-        else:
-            return {'status': 'true', 'data': json_tournaments }
-    except:
-        abort(500, Constants.system_fail)
-    
+        return {'status': 'true', 'data': json_tournaments }
 
 #Create tournament
 def add_tournament(request):
@@ -37,7 +35,8 @@ def add_tournament(request):
                 'points': 0,
                 'goals_recived': 0
             }
-        db_connection.get_collection('Torneo').insert_one({'name': tournament, 'teams':teams})
+        tournament_added = db_connection.get_collection('Torneo').insert_one({'name': tournament, 'teams':teams})
+        generate_matches(teams, tournament_added.inserted_id)
         return {'status': 'true', 'data': 'tournament '+tournament+' created' }
     except:
         abort(500, Constants.system_fail)
@@ -46,24 +45,7 @@ def add_tournament(request):
 def refresh_tournament(request, id):
     request_json = request.get_json()
     try:
-        #get old info
-        tournament = list(db_connection.get_collection('Torneo').find({"_id": ObjectId(id)}))
-        if tournament == [] :
-            abort(404, Constants.no_tournament)
-        else:
-             #get new info
-            new_name = ''
-            if 'newName' in request_json:
-                new_name = request_json['newName']
-
-            updated_teams = {}
-            if 'teams' in request_json:
-                new_teams = request_json['teams']
-                updated_teams = tournament[0]['teams']
-                updated_teams = get_teams_structure(new_teams, updated_teams)
-
-            updated_info = get_update_structure(new_name, updated_teams)
-            db_connection.get_collection('Torneo').find_one_and_replace({'_id': ObjectId(id)}, updated_info)
+            update_tournament(request_json, id)
             return {'status': 'true', 'data': 'Updated tournament' }
     except:
         abort(500, Constants.system_fail)
@@ -76,7 +58,10 @@ def remove_tournament(id):
         if tournament == [] :
             abort(404, Constants.no_tournament)
         else:
-            db_connection.get_collection('Torneo').delete_one({'_id': ObjectId(id   )})
+            matches =  matches = list(db_connection.get_collection('Partido').find({'tournament': ObjectId(id)}))
+            for match in matches:
+                delete_match(match['_id'])
+            db_connection.get_collection('Torneo').delete_one({'_id': ObjectId(id)})
             return {'status': 'true', 'data': 'tournament removed' }
     except:
         abort(500, Constants.system_fail)
@@ -84,31 +69,23 @@ def remove_tournament(id):
 
 #get A tournament
 def get_tournament(request):
-    try:
-        tournament = request.args.get('tournament')
-        tournaments = list(db_connection.get_collection('Torneo').find({"_id": ObjectId(tournament)}))
-        if tournaments == []:
-            abort(404, Constants.no_tournament)
-        else:
-            tournaments = json.loads(MongoJSONEncoder().encode(tournaments))
-            return {'status': 'true', 'data': tournaments }
-    except:
-        abort(500, Constants.system_fail)
+    tournament = request.args.get('tournament')
+    tournaments = list(db_connection.get_collection('Torneo').find({"_id": ObjectId(tournament)}))
+    if tournaments == []:
+        abort(404, Constants.no_tournament)
+    else:
+        tournaments = json.loads(MongoJSONEncoder().encode(tournaments))
+        return {'status': 'true', 'data': tournaments }
 
-def get_teams_structure(new_teams, updated_teams):
-    for team in updated_teams:
-        if team in new_teams:
-            for topic in updated_teams[team]:
-                if topic in new_teams[team]:
-                    updated_teams[team][topic] = new_teams[team][topic]
-    return updated_teams
-    
-def get_update_structure(name, teams):
-    stucture = {}
-    if name != '':
-        stucture['name'] = name
-    
-    if teams != {}:
-        stucture['teams'] = teams
-    print(stucture)
-    return stucture
+
+
+
+def generate_matches(teams, id):
+    matches = []
+    combine = itertools.combinations(teams, 2)
+    for c in combine:
+        matches.append(c)
+
+    for match in matches:
+        register_match(id, [match[0],teams[match[0]]['team']], [match[1],teams[match[1]]['team']])
+

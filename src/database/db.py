@@ -1,6 +1,7 @@
 #Import Mongo
 from pymongo import MongoClient
 
+
 #Import connection to environment
 from dotenv import load_dotenv
 load_dotenv()
